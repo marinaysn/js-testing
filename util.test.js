@@ -40,4 +40,4 @@ test('should open in browser, click and submit', async () =>{
     const finalText = await page.$eval('.user-item', el => el.textContent);
     expect(finalText).toBe('Alex (14 years old)');
 
-}, 15000);
+},20000);
