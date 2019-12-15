@@ -1,28 +1,71 @@
+const path = require('path');
 
-const { checkAndGenerate, createElement } = require('./util');
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const multer = require('multer');
 
-const initApp = () => {
-  // Initializes the app, registers the button click listener
-  const newUserButton = document.querySelector('#btnAddUser');
-  newUserButton.addEventListener('click', addUser);
+const feedRoutes = require('./routes/feed');
+const authRoutes = require('./routes/auth');
+const connectionString = require('./util/database')
+
+const app = express();
+
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images');
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + '-' + file.originalname);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (
+    file.mimetype === 'image/png' ||
+    file.mimetype === 'image/jpg' ||
+    file.mimetype === 'image/jpeg'
+  ) {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
 };
 
-const addUser = () => {
-  // Fetches the user input, creates a new HTML element based on it
-  // and appends the element to the DOM
-  const newUserNameInput = document.querySelector('input#name');
-  const newUserAgeInput = document.querySelector('input#age');
+// app.use(bodyParser.urlencoded()); // x-www-form-urlencoded <form>
+app.use(bodyParser.json()); // application/json
+app.use(
+  multer({ storage: fileStorage, fileFilter: fileFilter }).single('image')
+);
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
-  const outputText = checkAndGenerate(newUserNameInput, newUserAgeInput)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'OPTIONS, GET, POST, PUT, PATCH, DELETE'
+  );
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+});
 
-if (!outputText) {
-    return;
-}
-  const userList = document.querySelector('.user-list');
-  
-  const element = createElement('li', outputText, 'user-item');
-  userList.appendChild(element);
-};
+app.use('/feed', feedRoutes);
+app.use('/auth', authRoutes);
 
-// Start the app!
-initApp();
+app.use((error, req, res, next) => {
+  console.log(error);
+  const status = error.statusCode || 500;
+  const message = error.message;
+  const data = error.data;
+  res.status(status).json({ message: message, data: data });
+});
+
+mongoose
+  .connect(
+    connectionString, { useNewUrlParser: true, useUnifiedTopology: true }
+  )
+  .then(result => {
+    console.log('Connected');
+    app.listen(8080);
+  })
+  .catch(err => console.log(err));
