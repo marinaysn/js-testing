@@ -7,6 +7,7 @@ const multer = require('multer');
 
 const feedRoutes = require('./routes/feed');
 const authRoutes = require('./routes/auth');
+const connectionString = require('./util/database')
 
 const app = express();
 
@@ -61,9 +62,10 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(
-    'mongodb+srv://maximilian:9u4biljMQc4jjqbe@cluster0-ntrwp.mongodb.net/messages?retryWrites=true'
+    connectionString, { useNewUrlParser: true, useUnifiedTopology: true }
   )
   .then(result => {
+    console.log('Connected');
     app.listen(8080);
   })
   .catch(err => console.log(err));
